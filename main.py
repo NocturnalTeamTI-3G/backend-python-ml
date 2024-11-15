@@ -7,7 +7,7 @@ config = config.Config()
 
 app = FastAPI()
 
-@app.post("/predict/")
+@app.post("/predict")
 async def predict_image(file: UploadFile = File(...)):
     # create folder if not exist
     if not os.path.exists('tmp'):
