@@ -1,4 +1,4 @@
-from app.core import config, model_predict, model_predict1
+from app.core import config, model_predict, model_predict1, model_predict2
 from fastapi import FastAPI, File, UploadFile
 import shutil
 import os
@@ -22,7 +22,8 @@ async def predict_image(file: UploadFile = File(...)):
     
     # Perform prediction
     # predict = model_predict.predict_jerawat(file_location, 'svm_model.joblib')
-    predict = model_predict1.predict_jerawat(file_location, 'svm_model1.joblib')
+    # predict = model_predict1.predict_jerawat(file_location, 'svm_model1.joblib')
+    predict = model_predict2.predict_jerawat(file_location, 'svm_model2.joblib', 'scaler.pkl')
     
     # Delete the file after prediction
     os.remove(file_location)
