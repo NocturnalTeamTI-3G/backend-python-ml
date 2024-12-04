@@ -3,9 +3,9 @@ import joblib
 import cv2 as cv
 import numpy as np
 from skimage.feature import local_binary_pattern, hog
-from sklearn.preprocessing import StandardScaler
 from pathlib import Path
 import matplotlib.image as mpimg
+from skimage.feature import graycomatrix, graycoprops
 
 
 # Fungsi untuk memuat model
@@ -43,42 +43,36 @@ def resize_img(img_list, size=(200, 200)):
     return img_resized
 
 # Function untuk melakukan ektraksi fitur dengan LBP
-def extract_lbp_features(img_list, P=8, R=1):
+def extract_features(img_list, P=8, R=1):
     features = []
 
     for img, label in img_list:
-        if len(img.shape) != 3:
-            print(f"Gambar tidak valid: {img.shape}")
+        # 1. Ekstraksi Fitur Warna (Histogram LAB)
+        lab_img = cv.cvtColor((img * 255).astype('uint8'), cv.COLOR_BGR2LAB)
+        l_hist = cv.calcHist([lab_img], [0], None, [256], [0, 256])
+        a_hist = cv.calcHist([lab_img], [1], None, [256], [0, 256])
+        b_hist = cv.calcHist([lab_img], [2], None, [256], [0, 256])
+        color_features = np.concatenate([l_hist.flatten(), a_hist.flatten(), b_hist.flatten()])
 
-        lbp_features = []
-        hog_features = []
+        # 2. Ekstraksi Fitur HOG
+        gray_img = cv.cvtColor((img * 255).astype('uint8'), cv.COLOR_BGR2GRAY)
+        hog_features, _ = hog(
+            gray_img,
+            orientations=9,
+            pixels_per_cell=(8, 8),
+            cells_per_block=(2, 2),
+            block_norm="L2-Hys",
+            visualize=True
+        )
 
-        # Ekstraksi fitur dari setiap channel
-        for channel in range(3):  # Iterasi melalui R, G, B
-            single_channel = img[..., channel]
+        # 3. Ekstraksi Fitur LBP
+        lbp = local_binary_pattern(gray_img, P, R, method='uniform')
+        lbp_hist, _ = np.histogram(lbp.ravel(), bins=np.arange(0, P + 3), range=(0, P + 2))
+        lbp_hist = lbp_hist.astype('float')
+        lbp_hist /= (lbp_hist.sum() + 1e-6)  # Normalisasi histogram
 
-            # LBP untuk channel saat ini
-            lbp = local_binary_pattern(single_channel, P, R, method='uniform')
-            hist, _ = np.histogram(lbp.ravel(), bins=np.arange(0, P + 3), range=(0, P + 2))
-            hist = hist.astype('float')
-            hist /= (hist.sum() + 1e-6)  # Normalisasi histogram
-            lbp_features.append(hist)
-
-            # HOG untuk channel saat ini
-            hog_feat, _ = hog(
-                single_channel,  # Asumsi gambar grayscale per channel
-                orientations=9,
-                pixels_per_cell=(8, 8),
-                cells_per_block=(2, 2),
-                block_norm="L2-Hys",
-                visualize=True
-            )
-            hog_features.append(hog_feat)
-
-        # Gabungkan semua fitur dari ketiga channel
-        combined_lbp = np.hstack(lbp_features)
-        combined_hog = np.hstack(hog_features)
-        combined_features = np.hstack((combined_lbp, combined_hog))
+        # Gabungkan semua fitur
+        combined_features = np.hstack((color_features, hog_features, lbp_hist))
 
         # Tambahkan ke daftar fitur
         features.append((combined_features, label))
@@ -108,7 +102,7 @@ def preprocess_segment_and_extract_features(img_path, scaler_path):
     # img_gray = grayscale_img(img_resize)
 
     # Langkah 2: Ekstraksi fitur LBP
-    lbp_features = extract_lbp_features(img_resize)
+    lbp_features = extract_features(img_resize)
 
     # Langkah 3: Standarisasi fitur
     features = np.array([f[0] for f in lbp_features])  # Hanya ambil histogram LBP

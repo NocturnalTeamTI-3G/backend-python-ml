@@ -23,7 +23,7 @@ async def predict_image(file: UploadFile = File(...)):
     # Perform prediction
     # predict = model_predict.predict_jerawat(file_location, 'svm_model.joblib')
     # predict = model_predict1.predict_jerawat(file_location, 'svm_model1.joblib')
-    predict = model_predict2.predict_jerawat(file_location, 'svm_model2.joblib', 'scaler.pkl')
+    predict = model_predict2.predict_jerawat(file_location, 'svm_model.joblib', 'scaler.pkl')
     
     # Delete the file after prediction
     os.remove(file_location)
